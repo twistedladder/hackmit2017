@@ -96,6 +96,7 @@ def run_event():
     
 
 def select_next_event():
+    global next_event
     for key, value in current_trip.iteritems():
         for poi in value.visits:
             if next_event is None or (poi.time < next_event.time and not poi.completed):
@@ -138,6 +139,10 @@ def format_flight(result):
 # message handlers
 
 def handle_text(sender_id, user_state, message_text):
+    if message_text.rstrip().lower() == 'restart':
+        _state[sender_id] = -1
+        user_state = -1
+        send_message(sender_id, 'Restarted!')
     # start anew
     if user_state == -1:
         send_message(sender_id, 'Meow ~ I am TravelCat! \nTo start planning a trip, say "start trip"')
@@ -155,8 +160,10 @@ def handle_text(sender_id, user_state, message_text):
         current_trip[sender_id] = trip
         if sender_id not in all_trips:
             all_trips[sender_id] = [trip]
+        elif all_trips[sender_id] is None:
+            all_trips[sender_id] = [trip]
         else:
-            all_trips[sender_id] = all_trips[sender_id].append(trip)
+            all_trips[sender_id].append(trip)
         send_message(sender_id, 'Mrow ~ where would you like to go? Send a location pin!')
     # destination entered, awaiting dates
     elif user_state == 2:
@@ -299,35 +306,36 @@ def handle_text(sender_id, user_state, message_text):
         send_message(sender_id, "Your response has been recorded!")
         if check_completed_trip(sender_id):
             _state[sender_id] = 6
+            handle_text(sender_id, 6, "")
         else:
             _state[sender_id] = 5
             select_next_event()
             run_event()
     elif user_state == 6:
-        for i in xrange(len(current_trips[sender_id].visits)):
+        for i in xrange(len(current_trip[sender_id].visits)):
             if i == 0:
                 send_message(
                     sender_id, 
                     "First, you visited " + 
-                    current_trips[sender_id].visits[i].location +
+                    current_trip[sender_id].visits[i].location +
                     ". You thought it was " +
-                    current_trips[sender_id].visits[i].feedback["emotion"] + "."
+                    current_trip[sender_id].visits[i].feedback["emotion"] + "."
                 )
-            elif i == len(current_trips[sender_id].visits) - 1:
+            elif i == len(current_trip[sender_id].visits) - 1:
                 send_message(
                     sender_id, 
                     "Finally, you visited " + 
-                    current_trips[sender_id].visits[i].location +
+                    current_trip[sender_id].visits[i].location +
                     ". You thought it was " +
-                    current_trips[sender_id].visits[i].feedback["emotion"] + "."
+                    current_trip[sender_id].visits[i].feedback["emotion"] + "."
                 )
             else:
                 send_message(
                     sender_id, 
                     "Then, you visited " + 
-                    current_trips[sender_id].visits[i].location +
+                    current_trip[sender_id].visits[i].location +
                     ". You thought it was " +
-                    current_trips[sender_id].visits[i].feedback["emotion"] + "."
+                    current_trip[sender_id].visits[i].feedback["emotion"] + "."
                 )
         send_message(sender_id, "It sounds like you had a great trip. Come back and chat with me again!")
         _state[sender_id] = -1
